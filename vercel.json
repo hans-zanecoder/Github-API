@@ -1,0 +1,15 @@
+{
+    "version": 2,
+    "builds": [
+      {
+        "src": "public/**",
+        "use": "@vercel/static"
+      },
+      {
+        "src": "artisan",
+        "use": "@vercel/php"
+      }
+    ],
+    "outputDirectory": "public"
+  }
+  
