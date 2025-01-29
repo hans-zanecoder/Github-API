@@ -1,6 +1,7 @@
 const GITHUB_API_URL = 'https://api.github.com';
 const headers = {
-  'Accept': 'application/vnd.github.v3+json'
+  'Accept': 'application/vnd.github.v3+json',
+  'Origin': window.location.origin
 };
 
 let allPullRequests = []; 
