@@ -4,12 +4,17 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Http\Request;
 
-Route::get('/pull-requests', function (): JsonResponse {
-    $repo = config('github.repository', 'zaneCoder/mortdash');
+Route::get('/github-token', function () {
+    return response()->json([
+        'token' => config('github.token')
+    ]);
+});
+
+Route::get('/pull-requests', function () {
+    $response = Http::withToken(config('github.token'))
+        ->get('https://api.github.com/repos/hans-zanecoder/Github-API/pulls');
     
-    return Http::withToken(config('github.api_token'))
-        ->get("https://api.github.com/repos/{$repo}/pulls")
-        ->json();
+    return $response->json();
 });
 
 Route::post('/clone-repository', function (Request $request) {

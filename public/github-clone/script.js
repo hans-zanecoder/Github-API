@@ -1,83 +1,155 @@
-const apiUrl = "http://localhost:8000/api/pull-requests";
+const GITHUB_API_URL = 'https://api.github.com';
+let headers = {
+  'Accept': 'application/vnd.github.v3+json'
+};
+
+let allPullRequests = []; 
+
+async function initializeGitHubToken() {
+  try {
+    const response = await fetch('/api/github-token');
+    const data = await response.json();
+    headers.Authorization = `token ${data.token}`;
+  } catch (error) {
+    console.error('Error fetching GitHub token:', error);
+  }
+}
 
 async function fetchPullRequests() {
-    try {
-        const response = await fetch(apiUrl);
-        if (!response.ok) throw new Error('Network response was not ok');
-        const pullRequests = await response.json();
-        updateCounts(pullRequests);
-        return pullRequests;
-    } catch (error) {
-        console.error('Error fetching pull requests:', error);
-        return [];
+  try {
+    if (!headers.Authorization) {
+      await initializeGitHubToken();
     }
+    
+    // Fetch both open and closed PRs
+    const [openResponse, closedResponse] = await Promise.all([
+      fetch(`${GITHUB_API_URL}/repos/hans-zanecoder/Github-API/pulls?state=open`, {
+        headers
+      }),
+      fetch(`${GITHUB_API_URL}/repos/hans-zanecoder/Github-API/pulls?state=closed`, {
+        headers
+      })
+    ]);
+
+    const openPRs = await openResponse.json();
+    const closedPRs = await closedResponse.json();
+    
+    // Combine both results
+    allPullRequests = [...openPRs, ...closedPRs];
+    
+    filterAndDisplayPRs();
+    updateCounts(allPullRequests);
+  } catch (error) {
+    console.error('Error fetching pull requests:', error);
+  }
+}
+
+function updatePRList(prs) {
+  const prList = document.getElementById('pr-list');
+  const template = document.getElementById('pr-template');
+  
+  prList.innerHTML = '';
+  
+  prs.forEach(pr => {
+    const clone = template.content.cloneNode(true);
+    
+    clone.querySelector('.pr-title').textContent = pr.title;
+    clone.querySelector('.pr-meta').textContent = `#${pr.number} opened by ${pr.user.login}`;
+    
+    prList.appendChild(clone);
+  });
 }
 
 function updateCounts(prs) {
-    const openCount = prs.filter(pr => pr.state === 'open').length;
-    const closedCount = prs.filter(pr => pr.state === 'closed').length;
-    
-    document.getElementById('open-count').textContent = openCount;
-    document.getElementById('closed-count').textContent = closedCount;
+  const openCount = document.getElementById('open-count');
+  const closedCount = document.getElementById('closed-count');
+  
+  openCount.textContent = prs.filter(pr => pr.state === 'open').length;
+  closedCount.textContent = prs.filter(pr => pr.state === 'closed').length;
 }
 
-function renderPullRequests(prs) {
-    const prList = document.getElementById('pr-list');
-    const template = document.getElementById('pr-template');
-    prList.innerHTML = '';
+function filterAndDisplayPRs() {
+  const searchInput = document.getElementById('search-input');
+  const searchTerm = searchInput.value.toLowerCase();
+  const filterBtn = document.getElementById('filters-btn');
+  const currentFilter = filterBtn.dataset.currentFilter || 'all';
 
-    prs.forEach(pr => {
-        const clone = template.content.cloneNode(true);
-        
-        clone.querySelector('.pr-title').textContent = pr.title;
-        clone.querySelector('.pr-meta').textContent = `#${pr.number} opened ${new Date(pr.created_at).toLocaleDateString()} by ${pr.user.login}`;
-        
-        const cloneBtn = clone.querySelector('.clone-btn');
-        cloneBtn.onclick = () => cloneRepository(pr.head.repo.clone_url);
-        
-        prList.appendChild(clone);
+  let filteredPRs = allPullRequests;
+
+  // Filter by state
+  if (currentFilter !== 'all') {
+    filteredPRs = filteredPRs.filter(pr => pr.state === currentFilter);
+  }
+
+  // Filter by search term
+  if (searchTerm) {
+    filteredPRs = filteredPRs.filter(pr => {
+      return (
+        pr.title.toLowerCase().includes(searchTerm) ||
+        pr.user.login.toLowerCase().includes(searchTerm) ||
+        `#${pr.number}`.includes(searchTerm) ||
+        parseSearchQuery(searchTerm, pr)
+      );
     });
+  }
+
+  updatePRList(filteredPRs);
+  updateCounts(filteredPRs);
 }
 
-async function cloneRepository(cloneUrl) {
-    try {
-        const response = await fetch('/api/clone-repository', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ cloneUrl })
-        });
-        
-        const result = await response.json();
-        if (result.success) {
-            showNotification('Repository cloned successfully!', 'success');
-        } else {
-            showNotification(result.message, 'error');
-        }
-    } catch (error) {
-        showNotification('Failed to clone repository', 'error');
-        console.error('Error:', error);
+function parseSearchQuery(query, pr) {
+  const terms = query.split(' ');
+  return terms.every(term => {
+    const [key, value] = term.split(':');
+    switch (key) {
+      case 'is':
+        return value === pr.state || (value === 'pr' && pr.pull_request);
+      case 'author':
+        return pr.user.login.toLowerCase() === value.toLowerCase();
+      case 'label':
+        return pr.labels.some(label => label.name.toLowerCase() === value.toLowerCase());
+      default:
+        return true;
     }
-}
-
-function showNotification(message, type) {
-    // Implementation for showing notifications
-    alert(message); 
+  });
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    fetchPullRequests().then(renderPullRequests);
-    
-    document.querySelectorAll('.filter-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const state = e.target.dataset.state;
-            filterPRs(state);
-        });
-    });
-});
+  const filtersBtn = document.getElementById('filters-btn');
+  const filtersDropdown = document.getElementById('filters-dropdown');
+  const searchInput = document.getElementById('search-input');
+  
+  // Toggle filters dropdown
+  filtersBtn.addEventListener('click', () => {
+    filtersDropdown.classList.toggle('hidden');
+  });
 
-function filterPRs(state) {
-    fetchPullRequests().then(prs => {
-        const filteredPRs = state === 'all' ? prs : prs.filter(pr => pr.state === state);
-        renderPullRequests(filteredPRs);
+  // Close dropdown when clicking outside
+  document.addEventListener('click', (e) => {
+    if (!filtersBtn.contains(e.target) && !filtersDropdown.contains(e.target)) {
+      filtersDropdown.classList.add('hidden');
+    }
+  });
+
+  // Handle filter options
+  document.querySelectorAll('.filter-option').forEach(option => {
+    option.addEventListener('click', () => {
+      const filter = option.dataset.filter;
+      filtersBtn.dataset.currentFilter = filter;
+      filtersDropdown.classList.add('hidden');
+      filterAndDisplayPRs();
     });
-}
+  });
+
+  // Handle search with debounce
+  let searchTimeout;
+  searchInput.addEventListener('input', () => {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+      filterAndDisplayPRs();
+    }, 300);
+  });
+
+  fetchPullRequests();
+  setInterval(fetchPullRequests, 60000);
+});
