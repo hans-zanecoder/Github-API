@@ -1,22 +1,44 @@
 const GITHUB_API_URL = 'https://api.github.com';
-const GITHUB_TOKEN = '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'; 
-
-const headers = {
-  'Authorization': `token ${GITHUB_TOKEN}`,
+let headers = {
   'Accept': 'application/vnd.github.v3+json'
 };
 
 let allPullRequests = []; 
 
+async function initializeGitHubToken() {
+  try {
+    const response = await fetch('/api/github-token');
+    const data = await response.json();
+    headers.Authorization = `token ${data.token}`;
+  } catch (error) {
+    console.error('Error fetching GitHub token:', error);
+  }
+}
+
 async function fetchPullRequests() {
   try {
-    const response = await fetch(`${GITHUB_API_URL}/repos/hans-zanecoder/Github-API/pulls`, {
-      headers
-    });
-    const data = await response.json();
-    allPullRequests = data; // Store all PRs
+    if (!headers.Authorization) {
+      await initializeGitHubToken();
+    }
+    
+    // Fetch both open and closed PRs
+    const [openResponse, closedResponse] = await Promise.all([
+      fetch(`${GITHUB_API_URL}/repos/hans-zanecoder/Github-API/pulls?state=open`, {
+        headers
+      }),
+      fetch(`${GITHUB_API_URL}/repos/hans-zanecoder/Github-API/pulls?state=closed`, {
+        headers
+      })
+    ]);
+
+    const openPRs = await openResponse.json();
+    const closedPRs = await closedResponse.json();
+    
+    // Combine both results
+    allPullRequests = [...openPRs, ...closedPRs];
+    
     filterAndDisplayPRs();
-    updateCounts(data);
+    updateCounts(allPullRequests);
   } catch (error) {
     console.error('Error fetching pull requests:', error);
   }
@@ -34,11 +56,6 @@ function updatePRList(prs) {
     clone.querySelector('.pr-title').textContent = pr.title;
     clone.querySelector('.pr-meta').textContent = `#${pr.number} opened by ${pr.user.login}`;
     
-    const cloneBtn = clone.querySelector('.clone-btn');
-    cloneBtn.addEventListener('click', () => {
-      console.log(`Cloning PR #${pr.number}`);
-    });
-    
     prList.appendChild(clone);
   });
 }
@@ -48,15 +65,7 @@ function updateCounts(prs) {
   const closedCount = document.getElementById('closed-count');
   
   openCount.textContent = prs.filter(pr => pr.state === 'open').length;
-  
-  fetch(`${GITHUB_API_URL}/repos/zaneCoder/mortdash/pulls?state=closed`, {
-    headers
-  })
-    .then(response => response.json())
-    .then(data => {
-      closedCount.textContent = data.length;
-    })
-    .catch(error => console.error('Error fetching closed PRs:', error));
+  closedCount.textContent = prs.filter(pr => pr.state === 'closed').length;
 }
 
 function filterAndDisplayPRs() {
