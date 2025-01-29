@@ -1,5 +1,5 @@
 const GITHUB_API_URL = 'https://api.github.com';
-export const headers = {
+const headers = {
   'Accept': 'application/vnd.github.v3+json'
 };
 
@@ -80,11 +80,16 @@ function filterAndDisplayPRs() {
   const filterBtn = document.getElementById('filters-btn');
   const currentFilter = filterBtn.dataset.currentFilter || 'all';
 
-  let filteredPRs = [...allPullRequests]; // Create a copy of the array
+  let filteredPRs = [...allPullRequests];
 
   // Filter by state
   if (currentFilter !== 'all') {
-    filteredPRs = filteredPRs.filter(pr => pr.state === currentFilter);
+    filteredPRs = filteredPRs.filter(pr => {
+      if (currentFilter === 'draft') {
+        return pr.draft === true;
+      }
+      return pr.state === currentFilter;
+    });
   }
 
   // Filter by search term
@@ -120,10 +125,39 @@ function parseSearchQuery(query, pr) {
   });
 }
 
+function updateFilterButton(filter) {
+  const filterBtn = document.getElementById('filters-btn');
+  const openFilterBtn = document.getElementById('open-filter');
+  const closedFilterBtn = document.getElementById('closed-filter');
+  
+  filterBtn.textContent = `Filters: ${filter.charAt(0).toUpperCase() + filter.slice(1)}`;
+  filterBtn.dataset.currentFilter = filter;
+  
+  // Update button styles
+  if (filter === 'open') {
+    openFilterBtn.classList.add('bg-github-secondary');
+    closedFilterBtn.classList.remove('bg-github-secondary');
+  } else if (filter === 'closed') {
+    closedFilterBtn.classList.add('bg-github-secondary');
+    openFilterBtn.classList.remove('bg-github-secondary');
+  }
+  
+  // Update dropdown button appearance
+  document.querySelectorAll('.filter-option').forEach(option => {
+    if (option.dataset.filter === filter) {
+      option.classList.add('bg-github-border');
+    } else {
+      option.classList.remove('bg-github-border');
+    }
+  });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   const filtersBtn = document.getElementById('filters-btn');
   const filtersDropdown = document.getElementById('filters-dropdown');
   const searchInput = document.getElementById('search-input');
+  const openFilterBtn = document.getElementById('open-filter');
+  const closedFilterBtn = document.getElementById('closed-filter');
   
   // Toggle filters dropdown
   filtersBtn.addEventListener('click', () => {
@@ -131,8 +165,8 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Close dropdown when clicking outside
-  document.addEventListener('click', (e) => {
-    if (!filtersBtn.contains(e.target) && !filtersDropdown.contains(e.target)) {
+  document.addEventListener('click', (event) => {
+    if (!filtersBtn.contains(event.target) && !filtersDropdown.contains(event.target)) {
       filtersDropdown.classList.add('hidden');
     }
   });
@@ -141,10 +175,21 @@ document.addEventListener('DOMContentLoaded', () => {
   document.querySelectorAll('.filter-option').forEach(option => {
     option.addEventListener('click', () => {
       const filter = option.dataset.filter;
-      filtersBtn.dataset.currentFilter = filter;
+      updateFilterButton(filter);
       filtersDropdown.classList.add('hidden');
       filterAndDisplayPRs();
     });
+  });
+
+  // Handle open/closed filter buttons
+  openFilterBtn.addEventListener('click', () => {
+    updateFilterButton('open');
+    filterAndDisplayPRs();
+  });
+
+  closedFilterBtn.addEventListener('click', () => {
+    updateFilterButton('closed');
+    filterAndDisplayPRs();
   });
 
   // Handle search with debounce
@@ -156,13 +201,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 300);
   });
 
+  // Initial fetch
   fetchPullRequests();
-  setInterval(fetchPullRequests, 60000);
+  setInterval(fetchPullRequests, 60000); // Refresh every minute
 });
-
-export {
-  fetchPullRequests,
-  updateCounts,
-  filterAndDisplayPRs,
-  parseSearchQuery
-};
