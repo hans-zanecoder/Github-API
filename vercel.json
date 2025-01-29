@@ -1,0 +1,24 @@
+{
+    "version": 2,
+    "builds": [
+      {
+        "src": "public/**",
+        "use": "@vercel/static"
+      },
+      {
+        "src": "artisan",
+        "use": "@vercel/php"
+      }
+    ],
+    "build": {
+      "env": {
+        "COMPOSER_ALLOW_SUPERUSER": "1"
+      },
+      "commands": [
+        "curl -sS https://getcomposer.org/installer | php",
+        "php composer.phar install --no-dev --optimize-autoloader"
+      ]
+    },
+    "outputDirectory": "public"
+  }
+  
