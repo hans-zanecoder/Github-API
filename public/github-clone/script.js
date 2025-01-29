@@ -10,6 +10,7 @@ async function initializeGitHubToken() {
     const response = await fetch('/api/github-token');
     const data = await response.json();
     headers.Authorization = `token ${data.token}`;
+    console.log('GitHub Token:', data.token);  // Debugging: Check if the token is being fetched correctly
   } catch (error) {
     console.error('Error fetching GitHub token:', error);
   }
@@ -18,24 +19,25 @@ async function initializeGitHubToken() {
 async function fetchPullRequests() {
   try {
     if (!headers.Authorization) {
-      await initializeGitHubToken();
+      await initializeGitHubToken();  // Wait for token initialization
     }
-    
+
     // Fetch both open and closed PRs
     const [openResponse, closedResponse] = await Promise.all([
-      fetch(`${GITHUB_API_URL}/repos/hans-zanecoder/Github-API/pulls?state=open`, {
-        headers
-      }),
-      fetch(`${GITHUB_API_URL}/repos/hans-zanecoder/Github-API/pulls?state=closed`, {
-        headers
-      })
+      fetch(`${GITHUB_API_URL}/repos/hans-zanecoder/Github-API/pulls?state=open`, { headers }),
+      fetch(`${GITHUB_API_URL}/repos/hans-zanecoder/Github-API/pulls?state=closed`, { headers })
     ]);
+
+    if (!openResponse.ok || !closedResponse.ok) {
+      throw new Error('Failed to fetch PRs');
+    }
 
     const openPRs = await openResponse.json();
     const closedPRs = await closedResponse.json();
     
     // Combine both results
     allPullRequests = [...openPRs, ...closedPRs];
+    console.log('Fetched Pull Requests:', allPullRequests);  // Debugging: Check the fetched PRs
     
     filterAndDisplayPRs();
     updateCounts(allPullRequests);
@@ -64,6 +66,8 @@ function updatePRList(prs) {
     
     prList.appendChild(clone);
   });
+
+  console.log('Displayed Pull Requests:', prs);  // Debugging: Check the displayed PRs
 }
 
 function updateCounts(prs) {
@@ -159,6 +163,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const openFilterBtn = document.getElementById('open-filter');
   const closedFilterBtn = document.getElementById('closed-filter');
   
+  // Set default filter to 'all' when the page loads
+  updateFilterButton('all');
+
   // Toggle filters dropdown
   filtersBtn.addEventListener('click', () => {
     filtersDropdown.classList.toggle('hidden');

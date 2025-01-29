@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="csrf-token" content="{{ csrf_token() }}">
   <title>GitHub Clone</title>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -36,15 +37,40 @@
         </svg>
       </button>
       <nav class="flex flex-col space-y-4">
-        <a href="#" class="text-white hover:text-github-text py-2">Code</a>
-        <a href="#" class="text-white hover:text-github-text py-2">Issues</a>
-        <a href="#" class="text-white hover:text-github-text py-2">Pull requests</a>
-        <a href="#" class="text-white hover:text-github-text py-2">Actions</a>
-        <a href="#" class="text-white hover:text-github-text py-2">Projects</a>
-        <a href="#" class="text-white hover:text-github-text py-2">Security</a>
-        <a href="#" class="text-white hover:text-github-text py-2">Insights</a>
-        <a href="#" class="text-white hover:text-github-text py-2">Settings</a>
-      </nav>
+  <a href="#" class="text-white hover:text-github-text py-2 flex items-center">
+    <i class="fab fa-code mr-2"></i>
+    Code
+  </a>
+  <a href="#" class="text-white hover:text-github-text py-2 flex items-center">
+    <i class="fas fa-bug mr-2"></i>
+    Issues
+  </a>
+  <a href="#" class="text-white hover:text-github-text py-2 flex items-center">
+    <i class="fab fa-github mr-2"></i>
+    Pull requests
+  </a>
+  <a href="#" class="text-white hover:text-github-text py-2 flex items-center">
+    <i class="fas fa-tasks mr-2"></i>
+    Actions
+  </a>
+  <a href="#" class="text-white hover:text-github-text py-2 flex items-center">
+    <i class="fas fa-project-diagram mr-2"></i>
+    Projects
+  </a>
+  <a href="#" class="text-white hover:text-github-text py-2 flex items-center">
+    <i class="fas fa-shield-alt mr-2"></i>
+    Security
+  </a>
+  <a href="#" class="text-white hover:text-github-text py-2 flex items-center">
+    <i class="fas fa-chart-line mr-2"></i>
+    Insights
+  </a>
+  <a href="#" class="text-white hover:text-github-text py-2 flex items-center">
+    <i class="fas fa-cogs mr-2"></i>
+    Settings
+  </a>
+</nav>
+
     </div>
   </div>
 
