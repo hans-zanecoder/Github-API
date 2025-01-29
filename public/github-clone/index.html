@@ -83,13 +83,32 @@
     <div class="flex flex-col border-b border-github-border">
       <div class="flex justify-between items-center py-4">
         <div class="flex items-center space-x-4 flex-1">
-          <button id="filters-btn" class="px-3 py-1 text-sm font-medium rounded-md bg-github-secondary hover:bg-github-border">
-            Filters
-          </button>
+          <div class="relative">
+            <button id="filters-btn" class="px-3 py-1 text-sm font-medium rounded-md bg-github-secondary hover:bg-github-border flex items-center">
+              Filters
+              <svg class="ml-2 w-4 h-4" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M4.427 7.427l3.396 3.396a.25.25 0 00.354 0l3.396-3.396A.25.25 0 0011.396 7H4.604a.25.25 0 00-.177.427z" />
+              </svg>
+            </button>
+            
+            <div id="filters-dropdown" class="hidden absolute left-0 mt-2 w-60 rounded-md shadow-lg bg-github-secondary border border-github-border">
+              <div class="py-1">
+                <button class="filter-option w-full text-left px-4 py-2 text-sm text-white hover:bg-github-border" data-filter="all">All</button>
+                <button class="filter-option w-full text-left px-4 py-2 text-sm text-white hover:bg-github-border" data-filter="open">Open</button>
+                <button class="filter-option w-full text-left px-4 py-2 text-sm text-white hover:bg-github-border" data-filter="closed">Closed</button>
+              </div>
+            </div>
+          </div>
           <div class="relative flex-1 max-w-2xl">
             <input type="text" 
+                   id="search-input"
                    placeholder="is:pr is:open" 
                    class="w-full px-3 py-1.5 bg-github-secondary border border-github-border rounded-md text-sm text-white placeholder-github-text focus:outline-none focus:border-github-link">
+            <div class="absolute right-3 top-1/2 transform -translate-y-1/2">
+              <svg class="w-4 h-4 text-github-text" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M11.5 7a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0Zm-.82 4.74a6 6 0 1 1 1.06-1.06l3.04 3.04a.75.75 0 1 1-1.06 1.06l-3.04-3.04Z"></path>
+              </svg>
+            </div>
           </div>
         </div>
         <div class="flex items-center space-x-4">
@@ -106,14 +125,14 @@
             <path d="M8 9.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z"></path>
             <path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0ZM1.5 8a6.5 6.5 0 1 0 13 0 6.5 6.5 0 0 0-13 0Z"></path>
           </svg>
-          <span id="open-count">13</span>
+          <span id="open-count">0</span>
           <span>Open</span>
         </button>
         <button class="flex items-center space-x-1 px-3 py-1 text-sm font-medium text-github-text hover:text-white">
           <svg class="w-4 h-4 mr-1" viewBox="0 0 16 16" fill="currentColor">
             <path d="M13.78 4.22a.75.75 0 0 1 0 1.06l-7.25 7.25a.75.75 0 0 1-1.06 0L2.22 9.28a.75.75 0 0 1 1.06-1.06L6 10.94l6.72-6.72a.75.75 0 0 1 1.06 0Z"></path>
           </svg>
-          <span id="closed-count">569</span>
+          <span id="closed-count">0</span>
           <span>Closed</span>
         </button>
       </div>

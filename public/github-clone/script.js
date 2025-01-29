@@ -1,144 +1,146 @@
-const apiUrl = "http://localhost:8000/api/pull-requests";
+const GITHUB_API_URL = 'https://api.github.com';
+const GITHUB_TOKEN = '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'; 
 
-let currentFilter = 'all';
-let allPullRequests = [];
+const headers = {
+  'Authorization': `token ${GITHUB_TOKEN}`,
+  'Accept': 'application/vnd.github.v3+json'
+};
+
+let allPullRequests = []; 
 
 async function fetchPullRequests() {
-    try {
-        const response = await fetch(apiUrl);
-        if (!response.ok) throw new Error('Network response was not ok');
-        const pullRequests = await response.json();
-        allPullRequests = pullRequests; // Store all PRs
-        updateCounts(pullRequests);
-        applyFilters();
-        return pullRequests;
-    } catch (error) {
-        console.error('Error fetching pull requests:', error);
-        return [];
-    }
+  try {
+    const response = await fetch(`${GITHUB_API_URL}/repos/hans-zanecoder/Github-API/pulls`, {
+      headers
+    });
+    const data = await response.json();
+    allPullRequests = data; // Store all PRs
+    filterAndDisplayPRs();
+    updateCounts(data);
+  } catch (error) {
+    console.error('Error fetching pull requests:', error);
+  }
+}
+
+function updatePRList(prs) {
+  const prList = document.getElementById('pr-list');
+  const template = document.getElementById('pr-template');
+  
+  prList.innerHTML = '';
+  
+  prs.forEach(pr => {
+    const clone = template.content.cloneNode(true);
+    
+    clone.querySelector('.pr-title').textContent = pr.title;
+    clone.querySelector('.pr-meta').textContent = `#${pr.number} opened by ${pr.user.login}`;
+    
+    const cloneBtn = clone.querySelector('.clone-btn');
+    cloneBtn.addEventListener('click', () => {
+      console.log(`Cloning PR #${pr.number}`);
+    });
+    
+    prList.appendChild(clone);
+  });
 }
 
 function updateCounts(prs) {
-    const openCount = prs.filter(pr => pr.state === 'open').length;
-    const closedCount = prs.filter(pr => pr.state === 'closed').length;
-    
-    document.getElementById('open-count').textContent = openCount;
-    document.getElementById('closed-count').textContent = closedCount;
+  const openCount = document.getElementById('open-count');
+  const closedCount = document.getElementById('closed-count');
+  
+  openCount.textContent = prs.filter(pr => pr.state === 'open').length;
+  
+  fetch(`${GITHUB_API_URL}/repos/zaneCoder/mortdash/pulls?state=closed`, {
+    headers
+  })
+    .then(response => response.json())
+    .then(data => {
+      closedCount.textContent = data.length;
+    })
+    .catch(error => console.error('Error fetching closed PRs:', error));
 }
 
-function renderPullRequests(prs) {
-    const prList = document.getElementById('pr-list');
-    const template = document.getElementById('pr-template');
-    prList.innerHTML = '';
+function filterAndDisplayPRs() {
+  const searchInput = document.getElementById('search-input');
+  const searchTerm = searchInput.value.toLowerCase();
+  const filterBtn = document.getElementById('filters-btn');
+  const currentFilter = filterBtn.dataset.currentFilter || 'all';
 
-    prs.forEach(pr => {
-        const clone = template.content.cloneNode(true);
-        
-        clone.querySelector('.pr-title').textContent = pr.title;
-        clone.querySelector('.pr-meta').textContent = `#${pr.number} opened ${new Date(pr.created_at).toLocaleDateString()} by ${pr.user.login}`;
-        
-        const cloneBtn = clone.querySelector('.clone-btn');
-        cloneBtn.onclick = () => cloneRepository(pr.head.repo.clone_url);
-        
-        prList.appendChild(clone);
+  let filteredPRs = allPullRequests;
+
+  // Filter by state
+  if (currentFilter !== 'all') {
+    filteredPRs = filteredPRs.filter(pr => pr.state === currentFilter);
+  }
+
+  // Filter by search term
+  if (searchTerm) {
+    filteredPRs = filteredPRs.filter(pr => {
+      return (
+        pr.title.toLowerCase().includes(searchTerm) ||
+        pr.user.login.toLowerCase().includes(searchTerm) ||
+        `#${pr.number}`.includes(searchTerm) ||
+        parseSearchQuery(searchTerm, pr)
+      );
     });
+  }
+
+  updatePRList(filteredPRs);
+  updateCounts(filteredPRs);
 }
 
-async function cloneRepository(cloneUrl) {
-    try {
-        const response = await fetch('/api/clone-repository', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ cloneUrl })
-        });
-        
-        const result = await response.json();
-        if (result.success) {
-            showNotification('Repository cloned successfully!', 'success');
-        } else {
-            showNotification(result.message, 'error');
-        }
-    } catch (error) {
-        showNotification('Failed to clone repository', 'error');
-        console.error('Error:', error);
+function parseSearchQuery(query, pr) {
+  const terms = query.split(' ');
+  return terms.every(term => {
+    const [key, value] = term.split(':');
+    switch (key) {
+      case 'is':
+        return value === pr.state || (value === 'pr' && pr.pull_request);
+      case 'author':
+        return pr.user.login.toLowerCase() === value.toLowerCase();
+      case 'label':
+        return pr.labels.some(label => label.name.toLowerCase() === value.toLowerCase());
+      default:
+        return true;
     }
-}
-
-function showNotification(message, type) {
-    // Implementation for showing notifications
-    alert(message); 
-}
-
-function applyFilters() {
-    const searchInput = document.querySelector('input[placeholder="is:pr is:open"]');
-    const searchTerm = searchInput.value.toLowerCase();
-    
-    let filteredPRs = allPullRequests;
-
-    // Apply state filter
-    if (currentFilter !== 'all') {
-        filteredPRs = filteredPRs.filter(pr => pr.state === currentFilter);
-    }
-
-    // Apply search filter if there's a search term
-    if (searchTerm) {
-        filteredPRs = filteredPRs.filter(pr => {
-            return (
-                pr.title.toLowerCase().includes(searchTerm) ||
-                pr.user.login.toLowerCase().includes(searchTerm) ||
-                `#${pr.number}`.includes(searchTerm)
-            );
-        });
-    }
-
-    renderPullRequests(filteredPRs);
-    updateFilterButtons();
-}
-
-function updateFilterButtons() {
-    const openButton = document.querySelector('button:has(#open-count)');
-    const closedButton = document.querySelector('button:has(#closed-count)');
-    
-    // Reset button styles
-    openButton.className = 'flex items-center space-x-1 px-3 py-1 text-sm font-medium';
-    closedButton.className = 'flex items-center space-x-1 px-3 py-1 text-sm font-medium';
-    
-    if (currentFilter === 'open') {
-        openButton.className += ' rounded-md bg-github-secondary hover:bg-github-border';
-        closedButton.className += ' text-github-text hover:text-white';
-    } else if (currentFilter === 'closed') {
-        closedButton.className += ' rounded-md bg-github-secondary hover:bg-github-border';
-        openButton.className += ' text-github-text hover:text-white';
-    } else {
-        openButton.className += ' text-github-text hover:text-white';
-        closedButton.className += ' text-github-text hover:text-white';
-    }
+  });
 }
 
 document.addEventListener('DOMContentLoaded', () => {
-    fetchPullRequests();
-    
-    // Add event listeners for filter buttons
-    const openButton = document.querySelector('button:has(#open-count)');
-    const closedButton = document.querySelector('button:has(#closed-count)');
-    const searchInput = document.querySelector('input[placeholder="is:pr is:open"]');
-    
-    openButton.addEventListener('click', () => {
-        currentFilter = currentFilter === 'open' ? 'all' : 'open';
-        applyFilters();
+  const filtersBtn = document.getElementById('filters-btn');
+  const filtersDropdown = document.getElementById('filters-dropdown');
+  const searchInput = document.getElementById('search-input');
+  
+  // Toggle filters dropdown
+  filtersBtn.addEventListener('click', () => {
+    filtersDropdown.classList.toggle('hidden');
+  });
+
+  // Close dropdown when clicking outside
+  document.addEventListener('click', (e) => {
+    if (!filtersBtn.contains(e.target) && !filtersDropdown.contains(e.target)) {
+      filtersDropdown.classList.add('hidden');
+    }
+  });
+
+  // Handle filter options
+  document.querySelectorAll('.filter-option').forEach(option => {
+    option.addEventListener('click', () => {
+      const filter = option.dataset.filter;
+      filtersBtn.dataset.currentFilter = filter;
+      filtersDropdown.classList.add('hidden');
+      filterAndDisplayPRs();
     });
-    
-    closedButton.addEventListener('click', () => {
-        currentFilter = currentFilter === 'closed' ? 'all' : 'closed';
-        applyFilters();
-    });
-    
-    // Add search input listener with debouncing
-    let searchTimeout;
-    searchInput.addEventListener('input', () => {
-        clearTimeout(searchTimeout);
-        searchTimeout = setTimeout(() => {
-            applyFilters();
-        }, 300);
-    });
+  });
+
+  // Handle search with debounce
+  let searchTimeout;
+  searchInput.addEventListener('input', () => {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+      filterAndDisplayPRs();
+    }, 300);
+  });
+
+  fetchPullRequests();
+  setInterval(fetchPullRequests, 60000);
 });
