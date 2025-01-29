@@ -64,9 +64,9 @@
           </button>
           <div class="flex items-center space-x-2">
             <a href="#" class="text-white hover:text-github-text flex items-center space-x-2">
-              <span class="font-semibold truncate max-w-[120px] sm:max-w-none">zaneCoder</span>
+              <span class="font-semibold truncate max-w-[120px] sm:max-w-none">hans-zanecoder</span>
               <span class="text-github-text">/</span>
-              <span class="font-semibold truncate max-w-[100px] sm:max-w-none">mortdash</span>
+              <span class="font-semibold truncate max-w-[100px] sm:max-w-none">Github-API</span>
             </a>
             <span class="hidden sm:inline-block px-2 py-0.5 text-xs font-medium bg-github-secondary rounded-full border border-github-border">Private</span>
           </div>
