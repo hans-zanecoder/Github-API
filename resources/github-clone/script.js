@@ -1,16 +1,21 @@
 const GITHUB_API_URL = 'https://api.github.com';
 const headers = {
-  'Accept': 'application/vnd.github.v3+json',
-  'Origin': window.location.origin
+  'Accept': 'application/vnd.github.v3+json'
 };
 
 let allPullRequests = []; 
+
+const CACHE_KEY = 'github_prs_cache';
+const CACHE_EXPIRY = 30 * 60 * 1000; // 30 minutes in milliseconds
+
+let hasInitialFetch = false; // Flag to track initial fetch
 
 async function initializeGitHubToken() {
   try {
     const response = await fetch('/api/github-token');
     const data = await response.json();
     headers.Authorization = `token ${data.token}`;
+    console.log('GitHub Token:', data.token);  // Debugging: Check if the token is being fetched correctly
   } catch (error) {
     console.error('Error fetching GitHub token:', error);
   }
@@ -18,30 +23,81 @@ async function initializeGitHubToken() {
 
 async function fetchPullRequests() {
   try {
-    if (!headers.Authorization) {
-      await initializeGitHubToken();
+    // For first load, try to fetch from API
+    if (!hasInitialFetch) {
+      if (!headers.Authorization) {
+        await initializeGitHubToken();
+      }
+
+      const [openResponse, closedResponse] = await Promise.all([
+        fetch(`${GITHUB_API_URL}/repos/hans-zanecoder/Github-API/pulls?state=open`, { headers }),
+        fetch(`${GITHUB_API_URL}/repos/hans-zanecoder/Github-API/pulls?state=closed`, { headers })
+      ]);
+
+      if (!openResponse.ok || !closedResponse.ok) {
+        throw new Error('Failed to fetch PRs');
+      }
+
+      const openPRs = await openResponse.json();
+      const closedPRs = await closedResponse.json();
+      
+      allPullRequests = [...openPRs, ...closedPRs];
+      hasInitialFetch = true; // Mark initial fetch as complete
+      
+      // Cache the new data
+      setCache(allPullRequests);
+      
+      filterAndDisplayPRs();
+      updateCounts(allPullRequests);
+      return;
     }
-    
-    // Fetch both open and closed PRs
+
+    // After initial fetch, always use cache if available
+    const cachedData = getCache();
+    if (cachedData) {
+      console.log('Using cached pull requests data');
+      allPullRequests = cachedData;
+      filterAndDisplayPRs();
+      updateCounts(allPullRequests);
+      return;
+    }
+
+    // Only if cache is empty, try API again
     const [openResponse, closedResponse] = await Promise.all([
-      fetch(`${GITHUB_API_URL}/repos/hans-zanecoder/Github-API/pulls?state=open`, {
-        headers
-      }),
-      fetch(`${GITHUB_API_URL}/repos/hans-zanecoder/Github-API/pulls?state=closed`, {
-        headers
-      })
+      fetch(`${GITHUB_API_URL}/repos/hans-zanecoder/Github-API/pulls?state=open`, { headers }),
+      fetch(`${GITHUB_API_URL}/repos/hans-zanecoder/Github-API/pulls?state=closed`, { headers })
     ]);
+
+    if (!openResponse.ok || !closedResponse.ok) {
+      throw new Error('Failed to fetch PRs');
+    }
 
     const openPRs = await openResponse.json();
     const closedPRs = await closedResponse.json();
     
-    // Combine both results
     allPullRequests = [...openPRs, ...closedPRs];
+    setCache(allPullRequests);
     
     filterAndDisplayPRs();
     updateCounts(allPullRequests);
   } catch (error) {
     console.error('Error fetching pull requests:', error);
+    
+    // If API fetch fails and we have cached data, use it
+    const cachedData = getCache();
+    if (cachedData) {
+      console.log('Using cached data as fallback');
+      allPullRequests = cachedData;
+      filterAndDisplayPRs();
+      updateCounts(allPullRequests);
+    } else {
+      const prList = document.getElementById('pr-list');
+      if (prList) {
+        prList.innerHTML = `<div class="p-4 text-red-500">
+          Error loading pull requests. Please try again later.
+        </div>`;
+      }
+    }
   }
 }
 
@@ -65,6 +121,8 @@ function updatePRList(prs) {
     
     prList.appendChild(clone);
   });
+
+  console.log('Displayed Pull Requests:', prs);  // Debugging: Check the displayed PRs
 }
 
 function updateCounts(prs) {
@@ -160,6 +218,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const openFilterBtn = document.getElementById('open-filter');
   const closedFilterBtn = document.getElementById('closed-filter');
   
+  // Set default filter to 'all' when the page loads
+  updateFilterButton('all');
+
   // Toggle filters dropdown
   filtersBtn.addEventListener('click', () => {
     filtersDropdown.classList.toggle('hidden');
@@ -204,5 +265,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Initial fetch
   fetchPullRequests();
-  setInterval(fetchPullRequests, 60000); // Refresh every minute
+  
+  // Refresh cache only every 30 minutes instead of every minute
+  setInterval(fetchPullRequests, CACHE_EXPIRY);
 });

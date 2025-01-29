@@ -3,6 +3,8 @@ const headers = {
   'Accept': 'application/vnd.github.v3+json'
 };
 
+const CACHE_EXPIRY = 3 * 60 * 60 * 1000; // 3 hours in milliseconds
+
 let allPullRequests = []; 
 
 async function initializeGitHubToken() {
@@ -210,5 +212,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Initial fetch
   fetchPullRequests();
-  setInterval(fetchPullRequests, 60000); // Refresh every minute
+
+  // Refresh every 3 hours instead of every minute
+  setInterval(fetchPullRequests, 3 * 60 * 60 * 1000);
 });
