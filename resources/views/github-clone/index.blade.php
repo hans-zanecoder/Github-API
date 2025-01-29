@@ -282,6 +282,6 @@
       });
     });
   </script>
-  <script src="{{ asset('github-clone/script.js') }}"></script>
+  <script src="{{ secure_asset('github-clone/script.js') }}"></script>
 </body>
 </html>
