@@ -1,11 +1,16 @@
 const apiUrl = "http://localhost:8000/api/pull-requests";
 
+let currentFilter = 'all';
+let allPullRequests = [];
+
 async function fetchPullRequests() {
     try {
         const response = await fetch(apiUrl);
         if (!response.ok) throw new Error('Network response was not ok');
         const pullRequests = await response.json();
+        allPullRequests = pullRequests; // Store all PRs
         updateCounts(pullRequests);
+        applyFilters();
         return pullRequests;
     } catch (error) {
         console.error('Error fetching pull requests:', error);
@@ -64,20 +69,76 @@ function showNotification(message, type) {
     alert(message); 
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-    fetchPullRequests().then(renderPullRequests);
+function applyFilters() {
+    const searchInput = document.querySelector('input[placeholder="is:pr is:open"]');
+    const searchTerm = searchInput.value.toLowerCase();
     
-    document.querySelectorAll('.filter-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const state = e.target.dataset.state;
-            filterPRs(state);
+    let filteredPRs = allPullRequests;
+
+    // Apply state filter
+    if (currentFilter !== 'all') {
+        filteredPRs = filteredPRs.filter(pr => pr.state === currentFilter);
+    }
+
+    // Apply search filter if there's a search term
+    if (searchTerm) {
+        filteredPRs = filteredPRs.filter(pr => {
+            return (
+                pr.title.toLowerCase().includes(searchTerm) ||
+                pr.user.login.toLowerCase().includes(searchTerm) ||
+                `#${pr.number}`.includes(searchTerm)
+            );
         });
+    }
+
+    renderPullRequests(filteredPRs);
+    updateFilterButtons();
+}
+
+function updateFilterButtons() {
+    const openButton = document.querySelector('button:has(#open-count)');
+    const closedButton = document.querySelector('button:has(#closed-count)');
+    
+    // Reset button styles
+    openButton.className = 'flex items-center space-x-1 px-3 py-1 text-sm font-medium';
+    closedButton.className = 'flex items-center space-x-1 px-3 py-1 text-sm font-medium';
+    
+    if (currentFilter === 'open') {
+        openButton.className += ' rounded-md bg-github-secondary hover:bg-github-border';
+        closedButton.className += ' text-github-text hover:text-white';
+    } else if (currentFilter === 'closed') {
+        closedButton.className += ' rounded-md bg-github-secondary hover:bg-github-border';
+        openButton.className += ' text-github-text hover:text-white';
+    } else {
+        openButton.className += ' text-github-text hover:text-white';
+        closedButton.className += ' text-github-text hover:text-white';
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    fetchPullRequests();
+    
+    // Add event listeners for filter buttons
+    const openButton = document.querySelector('button:has(#open-count)');
+    const closedButton = document.querySelector('button:has(#closed-count)');
+    const searchInput = document.querySelector('input[placeholder="is:pr is:open"]');
+    
+    openButton.addEventListener('click', () => {
+        currentFilter = currentFilter === 'open' ? 'all' : 'open';
+        applyFilters();
+    });
+    
+    closedButton.addEventListener('click', () => {
+        currentFilter = currentFilter === 'closed' ? 'all' : 'closed';
+        applyFilters();
+    });
+    
+    // Add search input listener with debouncing
+    let searchTimeout;
+    searchInput.addEventListener('input', () => {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            applyFilters();
+        }, 300);
     });
 });
-
-function filterPRs(state) {
-    fetchPullRequests().then(prs => {
-        const filteredPRs = state === 'all' ? prs : prs.filter(pr => pr.state === state);
-        renderPullRequests(filteredPRs);
-    });
-}
