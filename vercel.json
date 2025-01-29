@@ -10,17 +10,16 @@
         "use": "@vercel/php"
       }
     ],
+    "env": {
+      "COMPOSER_ALLOW_SUPERUSER": "1",
+      "PHP_VERSION": "8.1"
+    },
     "build": {
       "env": {
         "COMPOSER_ALLOW_SUPERUSER": "1",
         "PHP_VERSION": "8.1"
       },
-      "commands": [
-        "curl -sS https://getcomposer.org/installer | php",
-        "php composer.phar install --no-dev --optimize-autoloader",
-        "npm install",
-        "npm run build"
-      ]
+      "cmd": "curl -sS https://getcomposer.org/installer | php && php composer.phar install --no-dev --optimize-autoloader && npm install && npm run build"
     },
     "outputDirectory": "public"
   }
