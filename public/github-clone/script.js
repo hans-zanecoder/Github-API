@@ -1,5 +1,5 @@
 const GITHUB_API_URL = 'https://api.github.com';
-let headers = {
+export const headers = {
   'Accept': 'application/vnd.github.v3+json'
 };
 
@@ -48,13 +48,19 @@ function updatePRList(prs) {
   const prList = document.getElementById('pr-list');
   const template = document.getElementById('pr-template');
   
+  // Clear existing content
   prList.innerHTML = '';
   
+  // Add new content
   prs.forEach(pr => {
-    const clone = template.content.cloneNode(true);
+    if (!pr.title || !pr.user) return; // Skip invalid PRs
     
-    clone.querySelector('.pr-title').textContent = pr.title;
-    clone.querySelector('.pr-meta').textContent = `#${pr.number} opened by ${pr.user.login}`;
+    const clone = template.content.cloneNode(true);
+    const titleElement = clone.querySelector('.pr-title');
+    const metaElement = clone.querySelector('.pr-meta');
+    
+    if (titleElement) titleElement.textContent = pr.title;
+    if (metaElement) metaElement.textContent = `#${pr.number} opened by ${pr.user.login}`;
     
     prList.appendChild(clone);
   });
@@ -74,7 +80,7 @@ function filterAndDisplayPRs() {
   const filterBtn = document.getElementById('filters-btn');
   const currentFilter = filterBtn.dataset.currentFilter || 'all';
 
-  let filteredPRs = allPullRequests;
+  let filteredPRs = [...allPullRequests]; // Create a copy of the array
 
   // Filter by state
   if (currentFilter !== 'all') {
@@ -153,3 +159,10 @@ document.addEventListener('DOMContentLoaded', () => {
   fetchPullRequests();
   setInterval(fetchPullRequests, 60000);
 });
+
+export {
+  fetchPullRequests,
+  updateCounts,
+  filterAndDisplayPRs,
+  parseSearchQuery
+};
